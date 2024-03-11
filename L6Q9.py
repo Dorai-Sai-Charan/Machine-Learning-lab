@@ -1,73 +1,102 @@
-from calendar import EPOCH
 import numpy as np
+import matplotlib.pyplot as plt
 
-def step_function(x):
-  """Defines the step activation function."""
-  return int(x > 0)  # Threshold at 0, output 1 if greater than 0, else 0
+def perceptron(inputs, weights, activation):
+    # Ensure inputs is a 2D array for the dot product operation
+    inputs = np.atleast_2d(inputs)
 
-def train_perceptron(inputs, targets, learning_rate, epochs=1000):
-  """Trains a single-layer perceptron with backpropagation and step activation.
+    # Calculate the weighted sum (including bias)
+    z = np.dot(weights, inputs.T) # Transpose inputs to match dimensions
+
+    # Apply chosen activation function
+    if activation == "step":
+        output = 1 if z > 0 else 0 
+    elif activation == "sigmoid":
+        output = 1 / (1 + np.exp(-z))
+    elif activation == "relu":
+        output = max(0, z)
+    elif activation == "bipolar_step":
+        output = 1 if z > 0 else -1
+    else:
+        raise ValueError("Invalid activation function provided.")
+
+    return output
+
+def train_perceptron(data, target, epochs, learning_rate, initial_weights, activation):
+  """
+  Trains the perceptron model with a given learning rate and activation function.
 
   Args:
-      inputs: A NumPy array of training inputs (each row represents an input sample).
-      targets: A NumPy array of desired outputs for the corresponding inputs.
+      data: A numpy array of training data points (each row is an input vector).
+      target: A numpy array of target outputs.
+      epochs: The number of training epochs.
       learning_rate: The learning rate for weight updates.
-      epochs: The maximum number of epochs to train for (default: 1000).
+      initial_weights: A numpy array of initial weights (same dimension as data[0]).
+      activation: A function representing the activation function.
 
   Returns:
-      A tuple containing the final weights and the convergence epoch (if achieved).
+      A tuple containing the final weights, bias (assumed to be zero), and a list of errors for each epoch.
   """
-
-  # Initialize weights with provided values
-  w0 = 10
-  w1 = 0.2
-  w2 = -0.75
-  bias = 0  # Can be added for bias term
+  weights = initial_weights[:len(data[0])]  # Take relevant weights based on input dimension
+  errors = []
 
   for epoch in range(epochs):
     total_error = 0
-    for i in range(len(inputs)):
-      # Forward pass
-      weighted_sum = w0 + np.dot(inputs[i], [w1, w2]) + bias  # Include bias if used
-
-      # Apply step activation
-      predicted_output = step_function(weighted_sum)
-
-      # Calculate error
-      error = targets[i] - predicted_output
-
-      # Backpropagation (simplified for step function)
-      # Update weights based on error and input values
-      w0 += learning_rate * error
-      w1 += learning_rate * error * inputs[i][0]
-      w2 += learning_rate * error * inputs[i][1]
-
+    for i, (x, y) in enumerate(zip(data, target)):
+      predicted = perceptron(x, weights, activation)
+      error = y - predicted
       total_error += error**2
 
+      # Update weights based on error
+      weights += learning_rate * error * x
+
+    # Calculate average error for the epoch
+    average_error = total_error / len(data)
+    errors.append(average_error)
+
     # Check for convergence
-    average_error = total_error / len(inputs)
     if average_error <= 0.002:
-      return w0, w1, w2, epoch + 1  # Return weights and epoch of convergence
+      print(f"Converged in {epoch+1} epochs!")
+      break
 
-  # Return weights if convergence not reached
-  return w0, w1, w2, epochs
+  return weights, 0.0, errors  # Assuming bias is zero
 
-# Training data (XOR gate)
-inputs = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
-targets = np.array([0, 1, 1, 0])
+def plot_errors(epochs, errors, title):
+  """
+  Plots the errors vs epochs.
 
-# Train the perceptron
+  Args:
+      epochs: A list of epochs.
+      errors: A list of errors for each epoch.
+      title: The title for the plot.
+  """
+  plt.plot(epochs, errors)
+  plt.xlabel("Epochs")
+  plt.ylabel("Error")
+  plt.title(title)
+  plt.grid(True)
+  plt.show()
+
+# Define initial weights and bias (assuming bias is zero)
+W0 = 10
+W1 = 0.2
+W2 = -0.75
+bias = 0  # Assuming bias is zero
 learning_rate = 0.05
-w0, w1, w2, converged_epoch = train_perceptron(inputs, targets, learning_rate)
 
-# Print results
-if converged_epoch < 1000:
-  print("Converged in", converged_epoch, "epochs.")
-  print("Weights:")
-  print("w0:", w0)
-  print("w1:", w1)
-  print("w2:", w2)
-else:
-  print("Convergence not reached within", EPOCH, "epochs.")
-  """In essence, the single-layer perceptron with a step activation function simply lacks the necessary
-    complexity to represent the non-linear decision boundary required for perfect XOR classification."""
+# Sample training data (replace with your actual data)
+data = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+target = np.array([0, 0, 0, 1])
+
+activations = ["step", "sigmoid", "relu", "bipolar_step"]
+for activation in activations:
+  weights, bias, errors = train_perceptron(data, target, 1000, learning_rate, np.array([W0, W1, W2]), activation)
+  print(f"Activation Function: {activation}")
+  print(f"Final Weights: {weights}")
+  print(f"Final Bias: {bias}")
+
+  # New data point for prediction (replace with your actual data)
+  new_data = np.array([0.2, 0.7])
+
+  # Plot errors vs epochs
+  plot_errors(range(1, len(errors)+1), errors, f"Perceptron Error ({activation})")
