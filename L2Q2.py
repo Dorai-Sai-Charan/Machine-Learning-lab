@@ -6,7 +6,7 @@ def euclidean_distance(point1, point2):
     return np.sqrt(np.sum((point1 - point2)**2))
 
 def knn_classifier(training_data, labels, new_point, k):
-    """k-Nearest Neighbors classifier."""
+    
     distances = []
     for i, point in enumerate(training_data):
         # Calculate the Euclidean distance between the new point and each point in the training data
